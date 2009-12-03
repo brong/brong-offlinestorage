@@ -9,7 +9,7 @@ our $logger = DJabberd::Log->get_logger;
 use Storable qw(nfreeze thaw);
 
 use vars qw($VERSION);
-$VERSION = '0.04';
+$VERSION = '0.05';
 
 =head1 NAME
 
@@ -87,17 +87,22 @@ sub on_initial_presence {
     my ($self, $vhost, $cb, $conn) = @_;
     my $from = $conn->bound_jid
         or return;
-    my $messages = $self->load_offline_messages($from->as_bare_string);
-    # deliver messages
-    foreach my $message (@$messages) {
-      my $packet = Storable::thaw($message->{packet});
-      my $class = $packet->{type};
-      my $xml = DJabberd::XMLElement->new($packet->{ns}, $packet->{element}, $packet->{attrs}, []);
-      my $stanza = $class->downbless($xml, $conn);
-      $stanza->set_raw($packet->{stanza});
-      $stanza->deliver($vhost);
-      $self->delete_offline_message($message->{id});
-    }
+
+    my $load_cb = sub {
+      my $messages = shift;
+      # deliver messages
+      foreach my $message (@$messages) {
+        my $packet = Storable::thaw($message->{packet});
+        my $class = $packet->{type};
+        my $xml = DJabberd::XMLElement->new($packet->{ns}, $packet->{element}, $packet->{attrs}, []);
+        my $stanza = $class->downbless($xml, $conn);
+        $stanza->set_raw($packet->{stanza});
+        $stanza->deliver($vhost);
+        $self->delete_offline_message($message->{id});
+      }
+    };
+
+    $self->load_offline_messages($from->as_bare_string, $load_cb);
 }
 
 
@@ -121,11 +126,12 @@ sub deliver {
                    'attrs'   => {}                      };
     map { $packet->{attrs}->{$_} = $stanza->attrs->{$_} } keys %{$stanza->{attrs}};
 
-    $self->store_offline_message($to->as_bare_string, Storable::nfreeze($packet));
+    my $store_cb = sub {
+      $DJabberd::Stats::counter{deliver_to_offline_storage}++;
+      $cb->delivered;
+    };
 
-    $DJabberd::Stats::counter{deliver_to_offline_storage}++;
-
-    $cb->delivered;
+    $self->store_offline_message($to->as_bare_string, Storable::nfreeze($packet), $store_cb);
 }
 
 =head1 COPYRIGHT & LICENSE

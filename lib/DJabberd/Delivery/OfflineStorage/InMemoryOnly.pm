@@ -5,24 +5,26 @@ use warnings;
 use Data::Dumper;
 
 use vars qw($VERSION);
-$VERSION = '0.04';
+$VERSION = '0.05';
 
 
 our $logger = DJabberd::Log->get_logger();
 
 
 sub load_offline_messages {
-    my ($self, $user) = @_;
+    my ($self, $user, $cb) = @_;
     $logger->info("InMemoryOnly OfflineStorage load for: $user");
     $self->{'offline'} ||= {};
+    my @messages = ();
     if (exists $self->{'offline'}{$user}) {
-        my @messages = ();
         foreach my $message (sort keys %{$self->{'offline'}{$user}}) {
           push(@messages, $self->{'offline'}{$message});
         }
-        return \@messages;
+    }
+    if ($cb) {
+        $cb->(\@messages);
     } else {
-        return [];
+        return \@messages;
     }
 }
 
@@ -45,7 +47,7 @@ sub delete_offline_message {
 
 
 sub store_offline_message {
-    my ($self, $user, $packet) = @_;
+    my ($self, $user, $packet, $cb) = @_;
     $self->{offline} ||= {};
     $self->{offline_id} ||= 1;
 
@@ -54,6 +56,9 @@ sub store_offline_message {
     $self->{'offline'}->{$user} ||= {};
     $self->{'offline'}->{$id} = {'id' => $id, 'packet' => $packet, 'jid' => $user};
     $self->{'offline'}->{$user}->{$id} = 1;
+    if ($cb) {
+        $cb->();
+    }
 }
 
 1;

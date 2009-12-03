@@ -5,7 +5,7 @@ use warnings;
 use DBI;
 
 use vars qw($VERSION);
-$VERSION = '0.04';
+$VERSION = '0.05';
 
 our $logger = DJabberd::Log->get_logger();
 
@@ -32,7 +32,7 @@ sub finalize {
 
 
 sub load_offline_messages {
-    my ($self, $user) = @_;
+    my ($self, $user, $cb) = @_;
 
     # collect packets for user
     my @packets = ();
@@ -46,7 +46,11 @@ sub load_offline_messages {
     if ($@) {
       $logger->warn("SELECT against user '$user' on dbfile '$self->{dbfile}' failed with: $@");
     }
-    return \@packets;
+    if ($cb) {
+      $cb->(\@packets);
+    } else {
+      return \@packets;
+    }
 }
 
 
@@ -64,7 +68,7 @@ sub delete_offline_message {
 
 
 sub store_offline_message {
-    my ($self, $user, $packet) = @_;
+    my ($self, $user, $packet, $cb) = @_;
 
     eval {
       $self->{dbh}->do("INSERT INTO offline (jid, timestamp, packet) VALUES (?,datetime('now'),?)",
@@ -72,6 +76,9 @@ sub store_offline_message {
     };
     if ($@) {
       $logger->warn("INSERT for user '$user' on dbfile '$self->{dbfile}' failed with: $@");
+    }
+    if ($cb) {
+      $cb->();
     }
 }
 
