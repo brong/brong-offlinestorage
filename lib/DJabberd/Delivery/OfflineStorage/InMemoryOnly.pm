@@ -17,31 +17,30 @@ sub load_offline_messages {
     $self->{'offline'} ||= {};
     my @messages = ();
     if (exists $self->{'offline'}{$user}) {
-        foreach my $message (sort keys %{$self->{'offline'}{$user}}) {
-          push(@messages, $self->{'offline'}{$message});
-        }
+      foreach my $id (sort keys %{$self->{'offline'}{$user}}) {
+        push @messages, {
+          id => $id,
+          packet => $self->{'offline'}{$user}{$id},
+        };
+      }
     }
     if ($cb) {
-        $cb->(\@messages);
+      $cb->(\@messages);
     } else {
-        return \@messages;
+      return \@messages;
     }
 }
 
 
 sub delete_offline_message {
-    my ($self, $id) = @_;
+    my ($self, $user, $id) = @_;
     $self->{'offline'} ||= {};
     $logger->info("InMemoryOnly OfflineStorage delete for: $id");
     # must remove it from $user too
-    if (exists $self->{'offline'}->{$id}){
-      my $user = $self->{'offline'}->{$id}->{'jid'};
-      if (exists $self->{'offline'}->{$user}) {
-        delete $self->{'offline'}->{$user}->{$id};
-        delete $self->{'offline'}->{$user}
-          unless keys %{$self->{'offline'}->{$user}};
-      }
-      delete $self->{'offline'}->{$id} 
+    if (exists $self->{'offline'}->{$user}) {
+      delete $self->{'offline'}->{$user}->{$id};
+      delete $self->{'offline'}->{$user}
+        unless keys %{$self->{'offline'}->{$user}};
     }
 }
 
@@ -54,10 +53,9 @@ sub store_offline_message {
     my $id = $self->{'offline_id'}++;
     $logger->info("InMemoryOnly OfflineStorage store for: $user/$id");
     $self->{'offline'}->{$user} ||= {};
-    $self->{'offline'}->{$id} = {'id' => $id, 'packet' => $packet, 'jid' => $user};
-    $self->{'offline'}->{$user}->{$id} = 1;
+    $self->{'offline'}->{$user}->{$id} = $packet;
     if ($cb) {
-        $cb->();
+      $cb->();
     }
 }
 

@@ -98,7 +98,7 @@ sub on_initial_presence {
         my $stanza = $class->downbless($xml, $conn);
         $stanza->set_raw($packet->{stanza});
         $stanza->deliver($vhost);
-        $self->delete_offline_message($message->{id});
+        $self->delete_offline_message($from->as_bare_string, $message->{id});
       }
     };
 

@@ -55,7 +55,7 @@ sub load_offline_messages {
 
 
 sub delete_offline_message {
-    my ($self, $id) = @_;
+    my ($self, $user, $id) = @_;
 
     # delete packet by id
     eval {
