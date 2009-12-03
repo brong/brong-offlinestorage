@@ -3,6 +3,7 @@ use strict;
 use base 'DJabberd::Delivery::OfflineStorage';
 use warnings;
 use DBI;
+use Storable qw(nfreeze thaw);
 
 use vars qw($VERSION);
 $VERSION = '0.05';
@@ -40,6 +41,7 @@ sub load_offline_messages {
       my $sth = $self->{dbh}->prepare("SELECT id, jid, timestamp, packet FROM offline WHERE jid=? ORDER BY id");
       $sth->execute($user);
       while (my $packet = $sth->fetchrow_hashref()){
+	$packet->{packet} = Storable::thaw($packet->{packet});
         push(@packets, $packet);
       }
     };
@@ -72,7 +74,7 @@ sub store_offline_message {
 
     eval {
       $self->{dbh}->do("INSERT INTO offline (jid, timestamp, packet) VALUES (?,datetime('now'),?)",
-                       undef, $user, $packet);
+                       undef, $user, Storable::nfreeze($packet));
     };
     if ($@) {
       $logger->warn("INSERT for user '$user' on dbfile '$self->{dbfile}' failed with: $@");

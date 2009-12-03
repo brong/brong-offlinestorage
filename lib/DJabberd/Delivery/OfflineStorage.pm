@@ -6,7 +6,6 @@ use base 'DJabberd::Delivery';
 use DJabberd::Queue::ServerOut;
 use DJabberd::Log;
 our $logger = DJabberd::Log->get_logger;
-use Storable qw(nfreeze thaw);
 
 use vars qw($VERSION);
 $VERSION = '0.05';
@@ -92,7 +91,7 @@ sub on_initial_presence {
       my $messages = shift;
       # deliver messages
       foreach my $message (@$messages) {
-        my $packet = Storable::thaw($message->{packet});
+        my $packet = $message->{packet};
         my $class = $packet->{type};
         my $xml = DJabberd::XMLElement->new($packet->{ns}, $packet->{element}, $packet->{attrs}, []);
         my $stanza = $class->downbless($xml, $conn);
@@ -131,7 +130,7 @@ sub deliver {
       $cb->delivered;
     };
 
-    $self->store_offline_message($to->as_bare_string, Storable::nfreeze($packet), $store_cb);
+    $self->store_offline_message($to->as_bare_string, $packet, $store_cb);
 }
 
 =head1 COPYRIGHT & LICENSE
